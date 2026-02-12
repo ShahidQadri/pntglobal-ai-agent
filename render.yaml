@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: pntglobal-ai-agent
+    env: python
+    plan: free
+    startCommand: gunicorn app:app

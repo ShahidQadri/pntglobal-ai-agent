@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "pntglobal-ai-agent"
+version = "0.1.0"
+description = "PNT Global AI Agent"
+authors = ["Shahid Qadri <shahid@pntglobal.com>"]
+packages = [{ include = "app" }]
+
+[tool.poetry.dependencies]
+python = "^3.14"
+flask = "^2.3.2"
+flask-cors = "^4.0.0"
+openai = "^1.0.0"
+gunicorn = "^21.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

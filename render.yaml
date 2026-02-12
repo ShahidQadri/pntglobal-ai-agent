@@ -3,4 +3,4 @@ services:
     name: pntglobal-ai-agent
     env: python
     plan: free
-    startCommand: gunicorn app:app
+    startCommand: python -m gunicorn app:app

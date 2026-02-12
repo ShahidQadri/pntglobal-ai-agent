@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
-import re
+from flask_cors import CORS
+import os
 
 app = Flask(__name__)
+CORS(app)  # Allow all origins
 
 def detect_intent(text):
     text = text.lower()
@@ -27,11 +29,6 @@ def chat():
 
     return jsonify({"reply": reply})
 
-@app.after_request
-def cors(res):
-    res.headers["Access-Control-Allow-Origin"] = "https://pntglobal.com"
-    res.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    return res
-
 if __name__ == "__main__":
-    app.run()
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)

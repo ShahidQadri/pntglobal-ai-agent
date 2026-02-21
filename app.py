@@ -3,10 +3,10 @@ from flask_cors import CORS
 import os
 
 app = Flask(__name__)
-CORS(app)  # Allow all origins
+CORS(app)
 
 # ----------------------------
-# SERVICES & PRICING
+# SERVICES & PRICING (SOURCE OF TRUTH)
 # ----------------------------
 services = {
     "seo": "Search Engine Optimization — US$ 200 per month",
@@ -22,7 +22,7 @@ services = {
 }
 
 # ----------------------------
-# FAQ KEYWORDS → ANSWERS
+# FAQs
 # ----------------------------
 faq = {
     "location": {
@@ -55,24 +55,52 @@ faq = {
 }
 
 # ----------------------------
-# INTENT DETECTION
+# AGENT CORE
 # ----------------------------
-def get_reply(text):
+def agent_reply(text):
     text = text.lower()
 
-    # 1️⃣ Check services & pricing first
+    # 1️⃣ Service & Pricing Detection
     for key, reply in services.items():
         if key in text:
-            return reply
+            return {
+                "reply": reply,
+                "intent": "service_pricing",
+                "confidence": 0.8
+            }
 
-    # 2️⃣ Check FAQs (keyword-based)
+    # 2️⃣ FAQ Detection
     for item in faq.values():
         for kw in item["keywords"]:
             if kw in text:
-                return item["answer"]
+                return {
+                    "reply": item["answer"],
+                    "intent": "faq",
+                    "confidence": 0.9
+                }
 
-    # 3️⃣ Default response
-    return "Thank you for contacting PNT Global. Please tell me more about your requirement."
+    # 3️⃣ Confusion / Unknown
+    confusion_words = ["not sure", "confused", "don’t understand", "dont understand", "help me"]
+    if any(cw in text for cw in confusion_words):
+        return {
+            "reply": (
+                "I want to make sure you get the right guidance. "
+                "May I connect you with a PNT specialist?"
+            ),
+            "intent": "escalation",
+            "confidence": 0.3,
+            "escalate": True
+        }
+
+    # 4️⃣ General Clarification (Smart Follow-up)
+    return {
+        "reply": (
+            "Sure — are you looking for **website development**, "
+            "**online store**, or **digital marketing services**?"
+        ),
+        "intent": "clarification",
+        "confidence": 0.6
+    }
 
 # ----------------------------
 # CHAT ENDPOINT
@@ -80,19 +108,28 @@ def get_reply(text):
 @app.route("/agent-chat", methods=["POST"])
 def chat():
     data = request.get_json()
-    msg = data.get("message", "")
-    reply = get_reply(msg)
-    return jsonify({"reply": reply})
+    msg = data.get("message", "").strip()
+
+    if not msg:
+        return jsonify({"reply": "Please type your question so I can help."})
+
+    response = agent_reply(msg)
+
+    # Auto escalation rule
+    if response.get("confidence", 1) < 0.6:
+        response["escalate"] = True
+
+    return jsonify(response)
 
 # ----------------------------
-# ROOT (STATUS CHECK)
+# STATUS CHECK
 # ----------------------------
 @app.route("/", methods=["GET"])
 def home():
-    return "PNT Global AI Agent is running ✅"
+    return "PNT Global Agentic AI is running ✅"
 
 # ----------------------------
-# RUN APP (RENDER)
+# RUN APP
 # ----------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))

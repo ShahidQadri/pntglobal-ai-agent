@@ -24,16 +24,16 @@ def get_session(session_id):
 # SERVICES & PRICING
 # ----------------------------
 services = {
-    "seo": "Search Engine Optimization — US$ 200 per month",
-    "social media": "Social Media Management — US$ 150 per month",
-    "digital marketing": "Digital Marketing — US$ 250 per month",
-    "google business": "Google Business Optimization — US$ 100",
-    "wordpress": "WordPress website design — US$ 350 (One time)",
-    "html": "HTML (CSS, JS) website design — US$ 250 (One time)",
-    "woocommerce": "WooCommerce online store — US$ 450 (One time)",
-    "shopify": "Shopify online store — US$ 450 (One time)",
-    "laravel store": "PHP (Laravel) online store — US$ 650 (One time)",
-    "software": "PHP (Laravel) software development — US$ 15 per hour",
+    "seo": "Search Engine Optimization to improve visibility, rankings, and qualified traffic.",
+    "social media": "Social Media Management to build brand presence and engagement.",
+    "digital marketing": "Digital Marketing solutions covering SEO, social, and paid growth.",
+    "google business": "Google Business Profile optimization for local visibility and leads.",
+    "wordpress": "WordPress website design tailored for performance and scalability.",
+    "html": "Custom HTML, CSS, and JavaScript website development.",
+    "woocommerce": "WooCommerce online store development for scalable eCommerce.",
+    "shopify": "Shopify online store setup and customization.",
+    "laravel store": "Laravel-based custom online store development.",
+    "software": "Custom PHP (Laravel) software development."
 }
 
 # ----------------------------

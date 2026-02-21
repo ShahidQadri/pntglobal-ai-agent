@@ -1,12 +1,27 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
+import uuid
 
 app = Flask(__name__)
 CORS(app)
 
 # ----------------------------
-# SERVICES & PRICING (SOURCE OF TRUTH)
+# IN-MEMORY SESSION STORE
+# ----------------------------
+sessions = {}
+
+def get_session(session_id):
+    if session_id not in sessions:
+        sessions[session_id] = {
+            "clarified": False,
+            "lead_stage": None,
+            "lead": {}
+        }
+    return sessions[session_id]
+
+# ----------------------------
+# SERVICES & PRICING
 # ----------------------------
 services = {
     "seo": "Search Engine Optimization — US$ 200 per month",
@@ -36,31 +51,37 @@ faq = {
     "consultation": {
         "keywords": ["free", "consultation", "audit"],
         "answer": "Yes, we offer free consultations and SEO audits before starting any project."
-    },
-    "services": {
-        "keywords": ["service", "website", "web", "store", "development"],
-        "answer": (
-            "We offer Website Design, Online Store Development, "
-            "Software Development, SEO, Social Media Management, "
-            "Digital Marketing, and Google Business Optimization."
-        )
-    },
-    "difference": {
-        "keywords": ["different", "why you", "experience"],
-        "answer": (
-            "With over 25 years of experience, we provide in-house expertise, "
-            "long-term client relationships, and complete digital solutions under one roof."
-        )
     }
 }
 
 # ----------------------------
 # AGENT CORE
 # ----------------------------
-def agent_reply(text):
+def agent_reply(text, session):
     text = text.lower()
 
-    # 1️⃣ Service & Pricing Detection
+    # LEAD CAPTURE FLOW
+    if session["lead_stage"] == "name":
+        session["lead"]["name"] = text.title()
+        session["lead_stage"] = "contact"
+        return {
+            "reply": "Thanks! Please share your email or WhatsApp number.",
+            "intent": "lead_capture"
+        }
+
+    if session["lead_stage"] == "contact":
+        session["lead"]["contact"] = text
+        session["lead_stage"] = "complete"
+        return {
+            "reply": (
+                "Perfect 👍 A PNT specialist will contact you shortly. "
+                "Thank you for reaching out!"
+            ),
+            "intent": "lead_complete",
+            "lead": session["lead"]
+        }
+
+    # SERVICES
     for key, reply in services.items():
         if key in text:
             return {
@@ -69,7 +90,7 @@ def agent_reply(text):
                 "confidence": 0.8
             }
 
-    # 2️⃣ FAQ Detection
+    # FAQs
     for item in faq.values():
         for kw in item["keywords"]:
             if kw in text:
@@ -79,27 +100,42 @@ def agent_reply(text):
                     "confidence": 0.9
                 }
 
-    # 3️⃣ Confusion / Unknown
-    confusion_words = ["not sure", "confused", "don’t understand", "dont understand", "help me"]
-    if any(cw in text for cw in confusion_words):
+    # CONFUSION → ESCALATE
+    confusion = ["not sure", "confused", "dont understand", "help me"]
+    if any(c in text for c in confusion):
+        session["lead_stage"] = "name"
         return {
             "reply": (
                 "I want to make sure you get the right guidance. "
-                "May I connect you with a PNT specialist?"
+                "May I have your name so I can connect you with a specialist?"
             ),
             "intent": "escalation",
             "confidence": 0.3,
             "escalate": True
         }
 
-    # 4️⃣ General Clarification (Smart Follow-up)
+    # SMART FOLLOW-UP (ONLY ONCE)
+    if not session["clarified"]:
+        session["clarified"] = True
+        return {
+            "reply": (
+                "Got it. Are you looking for **website development**, "
+                "**online store**, or **digital marketing** services?"
+            ),
+            "intent": "clarification",
+            "confidence": 0.6
+        }
+
+    # FINAL FALLBACK → ESCALATE
+    session["lead_stage"] = "name"
     return {
         "reply": (
-            "Sure — are you looking for **website development**, "
-            "**online store**, or **digital marketing services**?"
+            "To avoid any confusion, let me connect you with a PNT expert. "
+            "May I have your name?"
         ),
-        "intent": "clarification",
-        "confidence": 0.6
+        "intent": "escalation",
+        "confidence": 0.4,
+        "escalate": True
     }
 
 # ----------------------------
@@ -109,15 +145,11 @@ def agent_reply(text):
 def chat():
     data = request.get_json()
     msg = data.get("message", "").strip()
+    session_id = data.get("session_id") or str(uuid.uuid4())
 
-    if not msg:
-        return jsonify({"reply": "Please type your question so I can help."})
-
-    response = agent_reply(msg)
-
-    # Auto escalation rule
-    if response.get("confidence", 1) < 0.6:
-        response["escalate"] = True
+    session = get_session(session_id)
+    response = agent_reply(msg, session)
+    response["session_id"] = session_id
 
     return jsonify(response)
 
@@ -126,10 +158,10 @@ def chat():
 # ----------------------------
 @app.route("/", methods=["GET"])
 def home():
-    return "PNT Global Agentic AI is running ✅"
+    return "AskPNT Agentic AI v3 is running ✅"
 
 # ----------------------------
-# RUN APP
+# RUN
 # ----------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))

@@ -1,185 +1,78 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import os
-import uuid
+import os, uuid, json, openai
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
 
 # ----------------------------
-# IN-MEMORY SESSION STORE
+# SESSION STORE
 # ----------------------------
 sessions = {}
 
 def get_session(session_id):
     if session_id not in sessions:
         sessions[session_id] = {
-            "clarified": False,
             "lead_stage": None,
-            "lead": {}
+            "service": None,
+            "history": [],
+            "last_question": None,
+            "lead": {},
+            "created_at": str(datetime.now())
         }
     return sessions[session_id]
 
 # ----------------------------
-# SERVICES & PRICING
+# AI MODULE
 # ----------------------------
-services = {
-    "seo": "Search Engine Optimization to improve visibility, rankings, and qualified traffic.",
-    "social media": "Social Media Management to build brand presence and engagement.",
-    "digital marketing": "Digital Marketing solutions covering SEO, social, and paid growth.",
-    "google business": "Google Business Profile optimization for local visibility and leads.",
-    "wordpress": "WordPress website design tailored for performance and scalability.",
-    "html": "Custom HTML, CSS, and JavaScript website development.",
-    "woocommerce": "WooCommerce online store development for scalable eCommerce.",
-    "shopify": "Shopify online store setup and customization.",
-    "laravel store": "Laravel-based custom online store development.",
-    "software": "Custom PHP (Laravel) software development."
-}
-
-# ----------------------------
-# FAQs
-# ----------------------------
-faq = {
-    "location": {
-        "keywords": ["where", "based", "location", "office", "address"],
-        "answer": "Our head office is located at A-7, 4th Floor, Namco Campbell Street, Karachi – 74200, Pakistan. We serve clients worldwide."
-    },
-    "contact": {
-        "keywords": ["contact", "email", "phone", "call", "reach"],
-        "answer": "You can contact us at +92-335-363-6051 or email Consultant@PNTGlobal.com."
-    },
-    "consultation": {
-        "keywords": ["free", "consultation", "audit"],
-        "answer": "Yes, we offer free consultations and SEO audits before starting any project."
+def ai_agent_reply(user_message, session):
+    """
+    Sends user message + session context to GPT and returns structured response.
+    """
+    session_context = {
+        "lead_stage": session.get("lead_stage"),
+        "service": session.get("service"),
+        "last_question": session.get("last_question"),
+        "history": session.get("history")
     }
-}
 
-# ----------------------------
-# AGENT CORE
-# ----------------------------
-def agent_reply(text, session):
-    text_lower = text.lower()
+    prompt = f"""
+You are a smart PNT Global sales assistant. 
+User said: "{user_message}"
+Session context: {json.dumps(session_context)}
 
-    # ----------------------------
-    # GREETINGS (NEW)
-    # ----------------------------
-    greetings = ["hi", "hello", "hey", "how are you", "assalam", "salam"]
-    if any(g in text_lower for g in greetings):
+Rules:
+- Respond as JSON ONLY with:
+  - reply: text to send to user
+  - intent: one of greeting, service_detail, pricing, faq, lead_capture, unknown
+  - lead_capture: true/false
+  - next_question: follow-up question to store in session (optional)
+
+- Make replies short, clear, and professional.
+- If user shows interest in a service or pricing, set lead_capture=True.
+- If user says yes/no, handle naturally based on last_question.
+- Never loop on the same question.
+
+JSON format only.
+"""
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4.1-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3
+        )
+        content = response.choices[0].message.content
+        return json.loads(content)
+    except Exception as e:
+        print("AI ERROR:", e)
         return {
-            "reply": "Hello 👋 How can I help you today?",
-            "intent": "greeting",
-            "confidence": 1.0
+            "reply": "Sorry, I didn't understand. Can you rephrase?",
+            "intent": "unknown",
+            "lead_capture": False,
+            "next_question": None
         }
 
-    # ----------------------------
-    # PRICE INTENT (STRICT)
-    # ----------------------------
-    price_words = ["price", "pricing", "cost", "charges", "rate", "fee"]
-
-    if any(pw in text_lower for pw in price_words):
-        for key, price_text in pricing.items():
-            if key in text_lower:
-                return {
-                    "reply": price_text,
-                    "intent": "pricing",
-                    "confidence": 0.9
-                }
-
-        return {
-            "reply": "Sure — which service would you like pricing for?",
-            "intent": "pricing_clarification",
-            "confidence": 0.7
-        }
-
-    # ----------------------------
-    # LEAD CAPTURE FLOW
-    # ----------------------------
-    if session["lead_stage"] == "name":
-        session["lead"]["name"] = text.title()
-        session["lead_stage"] = "contact"
-        return {
-            "reply": "Thanks! Please share your email or WhatsApp number.",
-            "intent": "lead_capture"
-        }
-
-    if session["lead_stage"] == "contact":
-        session["lead"]["contact"] = text
-        session["lead_stage"] = "complete"
-        return {
-            "reply": "Perfect 👍 A PNT specialist will contact you shortly.",
-            "intent": "lead_complete",
-            "lead": session["lead"]
-        }
-
-    # ----------------------------
-    # SERVICE DETAILS (NO PRICE)
-    # ----------------------------
-    for key, description in services.items():
-        if key in text_lower:
-            return {
-                "reply": (
-                    f"{description} "
-                    "Would you like to know the **process**, **use cases**, or **pricing**?"
-                ),
-                "intent": "service_detail",
-                "confidence": 0.85
-            }
-
-    # ----------------------------
-    # FAQs
-    # ----------------------------
-    for item in faq.values():
-        for kw in item["keywords"]:
-            if kw in text_lower:
-                return {
-                    "reply": item["answer"],
-                    "intent": "faq",
-                    "confidence": 0.9
-                }
-
-    # ----------------------------
-    # CONFUSION → ESCALATE
-    # ----------------------------
-    confusion = ["not sure", "confused", "dont understand", "help me"]
-    if any(c in text_lower for c in confusion):
-        session["lead_stage"] = "name"
-        return {
-            "reply": (
-                "I want to make sure you get the right guidance. "
-                "May I have your name so I can connect you with a specialist?"
-            ),
-            "intent": "escalation",
-            "confidence": 0.3,
-            "escalate": True
-        }
-
-    # ----------------------------
-    # SMART FOLLOW-UP (ONLY ONCE)
-    # ----------------------------
-    if not session["clarified"]:
-        session["clarified"] = True
-        return {
-            "reply": (
-                "Could you tell me what you’re looking for — "
-                "**website**, **online store**, or **marketing**?"
-            ),
-            "intent": "clarification",
-            "confidence": 0.6
-        }
-
-    # ----------------------------
-    # FINAL ESCALATION
-    # ----------------------------
-    session["lead_stage"] = "name"
-    return {
-        "reply": (
-            "To make sure you get the right help, "
-            "let me connect you with a PNT expert. May I have your name?"
-        ),
-        "intent": "escalation",
-        "confidence": 0.4,
-        "escalate": True
-    }
 # ----------------------------
 # CHAT ENDPOINT
 # ----------------------------
@@ -190,7 +83,26 @@ def chat():
     session_id = data.get("session_id") or str(uuid.uuid4())
 
     session = get_session(session_id)
-    response = agent_reply(msg, session)
+    response = ai_agent_reply(msg, session)
+
+    # Update session context
+    session["last_question"] = response.get("next_question")
+    if response.get("lead_capture"):
+        session["lead_stage"] = "capture"
+    if session["lead_stage"] == "capture":
+        # Capture name/contact automatically if user responds
+        if "name" not in session["lead"]:
+            session["lead"]["name"] = msg
+            response["reply"] += " Thanks! Can you share your email or WhatsApp number?"
+            session["last_question"] = "lead_contact"
+        elif "contact" not in session["lead"] and session.get("last_question") == "lead_contact":
+            session["lead"]["contact"] = msg
+            session["lead_stage"] = "complete"
+            session["last_question"] = None
+            response["reply"] = "Perfect 👍 Our team will contact you shortly."
+
+    # Add to session history
+    session["history"].append({"user": msg, "bot": response["reply"], "time": str(datetime.now())})
     response["session_id"] = session_id
 
     return jsonify(response)
@@ -200,7 +112,7 @@ def chat():
 # ----------------------------
 @app.route("/", methods=["GET"])
 def home():
-    return "AskPNT Agentic AI v3 is running ✅"
+    return "AskPNT AI vNext Running 🚀"
 
 # ----------------------------
 # RUN

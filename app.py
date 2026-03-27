@@ -1,3 +1,11 @@
+from dotenv import load_dotenv
+import os, openai
+
+load_dotenv()  # loads .env locally
+openai.api_key = os.environ.get("OPENAI_API_KEY")
+
+if not openai.api_key:
+    raise ValueError("OpenAI API key not found. Set it in .env")
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os, uuid, json, openai

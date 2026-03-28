@@ -78,12 +78,12 @@ Rules:
 JSON format only.
 """
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3
-        )
-        content = response.choices[0].message.content
+       response = openai.chat.completions.create(
+    model="gpt-4.1-mini",
+    messages=[{"role": "user", "content": prompt}],
+    temperature=0.3
+)
+content = response.choices[0].message.content
         return json.loads(content)
     except Exception as e:
         print("AI ERROR:", e)

@@ -40,6 +40,9 @@ def get_session(session_id):
 # AI agent reply
 # ----------------------------
 def ai_agent_reply(user_message, session):
+    """
+    Sends user message + session context to GPT and returns structured response.
+    """
     session_context = {
         "lead_stage": session.get("lead_stage"),
         "service": session.get("service"),
@@ -71,6 +74,7 @@ JSON format only.
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3
         )
+        # New API: content is nested in response.choices[0].message['content']
         content = response.choices[0].message["content"]
         return json.loads(content)
     except Exception as e:

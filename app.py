@@ -7,15 +7,6 @@ from datetime import datetime
 import openai
 
 # ----------------------------
-# Load .env locally (optional)
-# ----------------------------
-try:
-    from dotenv import load_dotenv
-    load_dotenv()  # only for local development
-except ImportError:
-    pass  # dotenv not installed or on Render
-
-# ----------------------------
 # OpenAI API key
 # ----------------------------
 openai.api_key = os.environ.get("OPENAI_API_KEY")
@@ -49,9 +40,6 @@ def get_session(session_id):
 # AI agent reply
 # ----------------------------
 def ai_agent_reply(user_message, session):
-    """
-    Sends user message + session context to GPT and returns structured response.
-    """
     session_context = {
         "lead_stage": session.get("lead_stage"),
         "service": session.get("service"),
@@ -78,12 +66,12 @@ Rules:
 JSON format only.
 """
     try:
-       response = openai.chat.completions.create(
-    model="gpt-4.1-mini",
-    messages=[{"role": "user", "content": prompt}],
-    temperature=0.3
-)
-content = response.choices[0].message.content
+        response = openai.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3
+        )
+        content = response.choices[0].message["content"]
         return json.loads(content)
     except Exception as e:
         print("AI ERROR:", e)

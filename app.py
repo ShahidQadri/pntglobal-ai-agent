@@ -37,7 +37,13 @@ def get_session(session_id):
 # ----------------------------
 # AI agent reply
 # ----------------------------
+# ----------------------------
+# AI agent reply
+# ----------------------------
 def ai_agent_reply(user_message, session):
+    """
+    Sends user message + session context to GPT and returns structured response.
+    """
     session_context = {
         "lead_stage": session.get("lead_stage"),
         "service": session.get("service"),
@@ -63,6 +69,7 @@ Rules:
 - Never loop on the same question.
 JSON format only.
 """
+
     try:
         response = openai.chat.completions.create(
             model="gpt-4.1-mini",
@@ -72,10 +79,17 @@ JSON format only.
         content = response.choices[0].message.content
         return json.loads(content)
 
-    except openai.error.RateLimitError as e:
-        print("AI ERROR: Quota exceeded", e)
+    except Exception as e:
+        # Handle OpenAI errors gracefully
+        err_msg = str(e)
+        if "insufficient_quota" in err_msg or "429" in err_msg:
+            friendly_reply = "Sorry, our AI is temporarily unavailable due to quota limits. Please try again later."
+        else:
+            friendly_reply = "Sorry, I didn't understand. Can you rephrase?"
+
+        print("AI ERROR:", err_msg)
         return {
-            "reply": "⚠️ Our AI quota is currently exceeded. Please try again later.",
+            "reply": friendly_reply,
             "intent": "unknown",
             "lead_capture": False,
             "next_question": None

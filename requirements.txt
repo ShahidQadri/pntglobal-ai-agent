@@ -1,4 +1,5 @@
-google-genai
-requests
-flask
+Flask
 gunicorn
+requests
+google-genai
+python-dotenv

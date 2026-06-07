@@ -1,6 +1,6 @@
 Flask
 gunicorn
 requests
-google-genai
+google-generativeai
 python-dotenv
 flask-cors

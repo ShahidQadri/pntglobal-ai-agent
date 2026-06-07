@@ -62,9 +62,12 @@ Return ONLY JSON (no markdown, no text):
 }}
 """
 
-    try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(prompt)
+try:
+    model = genai.GenerativeModel("gemini-1.5-pro")
+except:
+    model = genai.GenerativeModel("gemini-pro")
+    
+    response = model.generate_content(prompt)
 
         text = response.text.strip()
 

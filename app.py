@@ -3,14 +3,20 @@ from flask_cors import CORS
 import os
 import uuid
 import json
-import re
 from datetime import datetime
-import google.generativeai as genai
+from google import genai
 
 # ----------------------------
-# Gemini config
+# Gemini config (NEW SDK ONLY)
 # ----------------------------
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+def call_gemini(prompt):
+    response = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=prompt
+    )
+    return response.text.strip()
 
 # ----------------------------
 # Flask app
@@ -36,6 +42,25 @@ def get_session(session_id):
     return sessions[session_id]
 
 # ----------------------------
+# Safe JSON extractor
+# ----------------------------
+def extract_json(text):
+    try:
+        start = text.find("{")
+        end = text.rfind("}") + 1
+        if start != -1 and end != -1:
+            return json.loads(text[start:end])
+    except:
+        pass
+
+    return {
+        "reply": text,
+        "intent": "unknown",
+        "lead_capture": False,
+        "next_question": None
+    }
+
+# ----------------------------
 # AI agent reply
 # ----------------------------
 def ai_agent_reply(user_message, session):
@@ -44,7 +69,7 @@ def ai_agent_reply(user_message, session):
         "lead_stage": session.get("lead_stage"),
         "service": session.get("service"),
         "last_question": session.get("last_question"),
-        "history": session.get("history")
+        "history": session.get("history")[-5:]  # keep last 5 only
     }
 
     print("SESSION CONTEXT:", session_context)
@@ -52,12 +77,13 @@ def ai_agent_reply(user_message, session):
     prompt = f"""
 You are a smart PNT Global sales assistant.
 
-User: {user_message}
+User message:
+{user_message}
 
 Context:
 {json.dumps(session_context)}
 
-Return ONLY JSON:
+Return ONLY valid JSON:
 {{
   "reply": "short response",
   "intent": "greeting|service_detail|pricing|faq|lead_capture|unknown",
@@ -67,24 +93,16 @@ Return ONLY JSON:
 """
 
     try:
-        model = genai.GenerativeModel("models/gemini-1.5-flash")
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=prompt
+        )
 
-        response = model.generate_content(prompt)
         text = response.text.strip()
 
         print("GEMINI RAW:", text)
 
-        match = re.search(r"\{.*\}", text, re.DOTALL)
-
-        if match:
-            return json.loads(match.group())
-
-        return {
-            "reply": text,
-            "intent": "unknown",
-            "lead_capture": False,
-            "next_question": None
-        }
+        return extract_json(text)
 
     except Exception as e:
         print("GEMINI ERROR:", repr(e))
@@ -101,22 +119,29 @@ Return ONLY JSON:
 # ----------------------------
 @app.route("/agent-chat", methods=["POST"])
 def chat():
-    data = request.get_json()
+
+    data = request.get_json() or {}
     msg = data.get("message", "").strip()
     session_id = data.get("session_id") or str(uuid.uuid4())
+
+    if not msg:
+        return jsonify({"reply": "Please send a message."})
 
     session = get_session(session_id)
     response = ai_agent_reply(msg, session)
 
+    # update session tracking
     session["last_question"] = response.get("next_question")
 
     if response.get("lead_capture"):
         session["lead_stage"] = "capture"
 
+    # simple lead flow
     if session["lead_stage"] == "capture":
+
         if "name" not in session["lead"]:
             session["lead"]["name"] = msg
-            response["reply"] += " Thanks! Can you share your email or WhatsApp number?"
+            response["reply"] += " 👍 Can you share your email or WhatsApp number?"
             session["last_question"] = "lead_contact"
 
         elif "contact" not in session["lead"] and session.get("last_question") == "lead_contact":
@@ -136,7 +161,7 @@ def chat():
     return jsonify(response)
 
 # ----------------------------
-# Status check
+# Health check
 # ----------------------------
 @app.route("/", methods=["GET"])
 def home():

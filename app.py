@@ -3,6 +3,7 @@ from flask_cors import CORS
 import os
 import uuid
 import json
+import re
 from datetime import datetime
 import google.generativeai as genai
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
@@ -43,14 +44,16 @@ def ai_agent_reply(user_message, session):
         "last_question": session.get("last_question"),
         "history": session.get("history")
     }
-
+    print("SESSION CONTEXT:", session_context)   # 👈 ADD HERE
     prompt = f"""
 You are a smart PNT Global sales assistant.
 
 User: {user_message}
-Context: {json.dumps(session_context)}
 
-Return ONLY valid JSON:
+Context:
+{json.dumps(session_context)}
+
+Return ONLY JSON (no markdown, no text):
 {{
   "reply": "short response",
   "intent": "greeting|service_detail|pricing|faq|lead_capture|unknown",
@@ -62,16 +65,18 @@ Return ONLY valid JSON:
     try:
         model = genai.GenerativeModel("gemini-1.5-flash")
         response = model.generate_content(prompt)
-        print("GEMINI RAW RESPONSE:", response.text)  # 👈 ADD THIS
+
         text = response.text.strip()
 
-        import json, re
-
+        print("GEMINI RAW:", text)
+      
+        # extract JSON safely
         match = re.search(r"\{.*\}", text, re.DOTALL)
+
         if match:
             return json.loads(match.group())
 
-        # fallback (VERY important)
+        # fallback if Gemini returns normal text
         return {
             "reply": text,
             "intent": "unknown",
@@ -80,15 +85,14 @@ Return ONLY valid JSON:
         }
 
     except Exception as e:
-        print("GEMINI ERROR:", e)
+        print("GEMINI ERROR:", repr(e))
 
         return {
-            "reply": "Sorry, I couldn't process that right now.",
+            "reply": "Server error. Please try again.",
             "intent": "unknown",
             "lead_capture": False,
             "next_question": None
-        }
-        
+        }        
 # ----------------------------
 # Chat endpoint
 # ----------------------------

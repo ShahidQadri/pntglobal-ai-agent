@@ -7,22 +7,28 @@ from datetime import datetime
 from google import genai
 
 # ----------------------------
-# Gemini config (STABLE SDK)
+# Gemini config (NEW SDK)
 # ----------------------------
-response = client.models.generate_content(
-    model="gemini-2.0-flash",
-    contents=prompt
-)
+
+API_KEY = os.getenv("GOOGLE_API_KEY")
+
+client = genai.Client(api_key=API_KEY)
 
 def call_gemini(prompt):
     try:
-        response = model.generate_content(prompt)
-        print("✅ GEMINI OK:", response.text)
-        return response.text.strip()
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
+
+        text = response.text
+        print("✅ GEMINI OK:", text)
+        return text.strip() if text else ""
 
     except Exception as e:
         print("🔥 GEMINI FAILED:", e)
-        raise e   # IMPORTANT: do NOT hide error
+        return ""
+
 # ----------------------------
 # Flask app
 # ----------------------------
@@ -166,7 +172,7 @@ def home():
     return "AskPNT AI vNext Running 🚀"
 
 # ----------------------------
-# Run
+# Run (local only)
 # ----------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))

@@ -3,15 +3,13 @@ from flask_cors import CORS
 import os, uuid, json
 from datetime import datetime
 import openai
-import requests
 
 # ----------------------------
-# CONFIG
+# OpenAI API key
 # ----------------------------
 openai.api_key = os.environ.get("OPENAI_API_KEY")
-
-AI_PROVIDER = os.environ.get("AI_PROVIDER", "openai")  # openai | ollama
-OLLAMA_URL = "http://localhost:11434/api/generate"
+if not openai.api_key:
+    raise ValueError("OPENAI_API_KEY not found in environment variables")
 
 # ----------------------------
 # Flask app
@@ -37,29 +35,15 @@ def get_session(session_id):
     return sessions[session_id]
 
 # ----------------------------
-# OLLAMA CALL
+# AI agent reply
 # ----------------------------
-def ollama_reply(prompt):
-    try:
-        response = requests.post(
-            OLLAMA_URL,
-            json={
-                "model": "mistral",
-                "prompt": prompt,
-                "stream": False
-            }
-        )
-        data = response.json()
-        return data.get("response", "")
-    except Exception as e:
-        print("OLLAMA ERROR:", e)
-        return ""
-
 # ----------------------------
-# AI AGENT
+# AI agent reply
 # ----------------------------
 def ai_agent_reply(user_message, session):
-
+    """
+    Sends user message + session context to GPT and returns structured response.
+    """
     session_context = {
         "lead_stage": session.get("lead_stage"),
         "service": session.get("service"),
@@ -68,114 +52,106 @@ def ai_agent_reply(user_message, session):
     }
 
     prompt = f"""
-You are a smart PNT Global sales assistant.
-
-User message: {user_message}
+You are a smart PNT Global sales assistant. 
+User said: "{user_message}"
 Session context: {json.dumps(session_context)}
 
-IMPORTANT RULES:
-- Respond ONLY in valid JSON
-- JSON format:
-  {{
-    "reply": "...",
-    "intent": "greeting|service_detail|pricing|faq|lead_capture|unknown",
-    "lead_capture": true/false,
-    "next_question": "optional string"
-  }}
+Rules:
+- Respond as JSON ONLY with:
+  - reply: text to send user
+  - intent: one of greeting, service_detail, pricing, faq, lead_capture, unknown
+  - lead_capture: true/false
+  - next_question: optional follow-up question to store in session
 
-Be short, professional, and helpful.
+- Make replies short, clear, professional.
+- If user shows interest in a service or pricing, set lead_capture=True.
+- Handle yes/no naturally based on last_question.
+- Never loop on the same question.
+JSON format only.
 """
 
     try:
-        # -------------------------
-        # OPENAI MODE
-        # -------------------------
-        if AI_PROVIDER == "openai":
-            response = openai.chat.completions.create(
-                model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3
-            )
-            content = response.choices[0].message.content
+        response = openai.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3
+        )
+        content = response.choices[0].message.content
+        return json.loads(content)
 
-        # -------------------------
-        # OLLAMA MODE
-        # -------------------------
+    except Exception as e:
+        # Handle OpenAI errors gracefully
+        err_msg = str(e)
+        if "insufficient_quota" in err_msg or "429" in err_msg:
+            friendly_reply = "Sorry, our AI is temporarily unavailable due to quota limits. Please try again later."
         else:
-            content = ollama_reply(prompt)
+            friendly_reply = "Sorry, I didn't understand. Can you rephrase?"
 
-        # try parsing JSON safely
-        try:
-            return json.loads(content)
-        except:
-            return {
-                "reply": content,
-                "intent": "unknown",
-                "lead_capture": False,
-                "next_question": None
-            }
+        print("AI ERROR:", err_msg)
+        return {
+            "reply": friendly_reply,
+            "intent": "unknown",
+            "lead_capture": False,
+            "next_question": None
+        }
 
     except Exception as e:
         print("AI ERROR:", e)
         return {
-            "reply": "Sorry, I couldn't process that right now.",
+            "reply": "Sorry, I couldn't process that. Please try rephrasing.",
             "intent": "unknown",
             "lead_capture": False,
             "next_question": None
         }
 
 # ----------------------------
-# CHAT ENDPOINT
+# Chat endpoint
 # ----------------------------
 @app.route("/agent-chat", methods=["POST"])
 def chat():
     data = request.get_json()
-
     msg = data.get("message", "").strip()
     session_id = data.get("session_id") or str(uuid.uuid4())
 
     session = get_session(session_id)
     response = ai_agent_reply(msg, session)
 
-    # update session context
+    # Update session context
     session["last_question"] = response.get("next_question")
-
     if response.get("lead_capture"):
         session["lead_stage"] = "capture"
 
-    # lead capture flow
+    # Lead capture flow
     if session["lead_stage"] == "capture":
         if "name" not in session["lead"]:
             session["lead"]["name"] = msg
             response["reply"] += " Thanks! Can you share your email or WhatsApp number?"
             session["last_question"] = "lead_contact"
-
         elif "contact" not in session["lead"] and session.get("last_question") == "lead_contact":
             session["lead"]["contact"] = msg
             session["lead_stage"] = "complete"
             session["last_question"] = None
             response["reply"] = "Perfect 👍 Our team will contact you shortly."
 
-    # history log
+    # Add to session history
     session["history"].append({
         "user": msg,
         "bot": response["reply"],
         "time": str(datetime.now())
     })
-
     response["session_id"] = session_id
 
     return jsonify(response)
 
 # ----------------------------
-# HOME
+# Status check
 # ----------------------------
 @app.route("/", methods=["GET"])
 def home():
     return "AskPNT AI vNext Running 🚀"
 
 # ----------------------------
-# RUN SERVER
+# Run
 # ----------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))

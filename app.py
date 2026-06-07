@@ -16,11 +16,12 @@ model = genai.GenerativeModel("gemini-1.5-flash")
 def call_gemini(prompt):
     try:
         response = model.generate_content(prompt)
+        print("✅ GEMINI OK:", response.text)
         return response.text.strip()
-    except Exception as e:
-        print("GEMINI ERROR:", e)
-        return None
 
+    except Exception as e:
+        print("🔥 GEMINI FAILED:", e)
+        raise e   # IMPORTANT: do NOT hide error
 # ----------------------------
 # Flask app
 # ----------------------------

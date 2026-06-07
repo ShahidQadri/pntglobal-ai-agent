@@ -50,29 +50,45 @@ You are a smart PNT Global sales assistant.
 User: {user_message}
 Context: {json.dumps(session_context)}
 
-Return ONLY JSON:
+Return ONLY valid JSON:
 {{
-  "reply": "...",
+  "reply": "short response",
   "intent": "greeting|service_detail|pricing|faq|lead_capture|unknown",
-  "lead_capture": true/false,
-  "next_question": "optional"
+  "lead_capture": false,
+  "next_question": null
 }}
 """
 
     try:
         model = genai.GenerativeModel("gemini-1.5-flash")
         response = model.generate_content(prompt)
+        print("GEMINI RAW RESPONSE:", response.text)  # 👈 ADD THIS
+        text = response.text.strip()
 
-        return json.loads(response.text)
+        import json, re
+
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            return json.loads(match.group())
+
+        # fallback (VERY important)
+        return {
+            "reply": text,
+            "intent": "unknown",
+            "lead_capture": False,
+            "next_question": None
+        }
 
     except Exception as e:
         print("GEMINI ERROR:", e)
+
         return {
             "reply": "Sorry, I couldn't process that right now.",
             "intent": "unknown",
             "lead_capture": False,
             "next_question": None
         }
+        
 # ----------------------------
 # Chat endpoint
 # ----------------------------

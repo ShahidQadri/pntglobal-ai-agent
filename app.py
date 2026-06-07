@@ -1,16 +1,11 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import os, uuid, json
+import os, uuid
 from datetime import datetime
-import openai
-
-# ----------------------------
-# OpenAI API key
-# ----------------------------
-openai.api_key = os.environ.get("OPENAI_API_KEY")
-if not openai.api_key:
-    raise ValueError("OPENAI_API_KEY not found in environment variables")
-
+import google.generativeai as genai
+import json
+import google.generativeai as genai
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 # ----------------------------
 # Flask app
 # ----------------------------
@@ -41,9 +36,7 @@ def get_session(session_id):
 # AI agent reply
 # ----------------------------
 def ai_agent_reply(user_message, session):
-    """
-    Sends user message + session context to GPT and returns structured response.
-    """
+
     session_context = {
         "lead_stage": session.get("lead_stage"),
         "service": session.get("service"),
@@ -52,58 +45,34 @@ def ai_agent_reply(user_message, session):
     }
 
     prompt = f"""
-You are a smart PNT Global sales assistant. 
-User said: "{user_message}"
-Session context: {json.dumps(session_context)}
+You are a smart PNT Global sales assistant.
 
-Rules:
-- Respond as JSON ONLY with:
-  - reply: text to send user
-  - intent: one of greeting, service_detail, pricing, faq, lead_capture, unknown
-  - lead_capture: true/false
-  - next_question: optional follow-up question to store in session
+User: {user_message}
+Context: {json.dumps(session_context)}
 
-- Make replies short, clear, professional.
-- If user shows interest in a service or pricing, set lead_capture=True.
-- Handle yes/no naturally based on last_question.
-- Never loop on the same question.
-JSON format only.
+Return ONLY JSON:
+{{
+  "reply": "...",
+  "intent": "greeting|service_detail|pricing|faq|lead_capture|unknown",
+  "lead_capture": true/false,
+  "next_question": "optional"
+}}
 """
 
     try:
-        response = openai.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3
-        )
-        content = response.choices[0].message.content
-        return json.loads(content)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = model.generate_content(prompt)
+
+        return json.loads(response.text)
 
     except Exception as e:
-        # Handle OpenAI errors gracefully
-        err_msg = str(e)
-        if "insufficient_quota" in err_msg or "429" in err_msg:
-            friendly_reply = "Sorry, our AI is temporarily unavailable due to quota limits. Please try again later."
-        else:
-            friendly_reply = "Sorry, I didn't understand. Can you rephrase?"
-
-        print("AI ERROR:", err_msg)
+        print("GEMINI ERROR:", e)
         return {
-            "reply": friendly_reply,
+            "reply": "Sorry, I couldn't process that right now.",
             "intent": "unknown",
             "lead_capture": False,
             "next_question": None
         }
-
-    except Exception as e:
-        print("AI ERROR:", e)
-        return {
-            "reply": "Sorry, I couldn't process that. Please try rephrasing.",
-            "intent": "unknown",
-            "lead_capture": False,
-            "next_question": None
-        }
-
 # ----------------------------
 # Chat endpoint
 # ----------------------------

@@ -6,7 +6,12 @@ import json
 import re
 from datetime import datetime
 import google.generativeai as genai
+
+# ----------------------------
+# Gemini config
+# ----------------------------
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+
 # ----------------------------
 # Flask app
 # ----------------------------
@@ -33,9 +38,6 @@ def get_session(session_id):
 # ----------------------------
 # AI agent reply
 # ----------------------------
-# ----------------------------
-# AI agent reply
-# ----------------------------
 def ai_agent_reply(user_message, session):
 
     session_context = {
@@ -44,7 +46,9 @@ def ai_agent_reply(user_message, session):
         "last_question": session.get("last_question"),
         "history": session.get("history")
     }
-    print("SESSION CONTEXT:", session_context)   # 👈 ADD HERE
+
+    print("SESSION CONTEXT:", session_context)
+
     prompt = f"""
 You are a smart PNT Global sales assistant.
 
@@ -53,7 +57,7 @@ User: {user_message}
 Context:
 {json.dumps(session_context)}
 
-Return ONLY JSON (no markdown, no text):
+Return ONLY JSON:
 {{
   "reply": "short response",
   "intent": "greeting|service_detail|pricing|faq|lead_capture|unknown",
@@ -62,24 +66,19 @@ Return ONLY JSON (no markdown, no text):
 }}
 """
 
-try:
-    model = genai.GenerativeModel("gemini-1.5-pro")
-except Exception as e:
-    print("Model fallback triggered:", e)
-    model = genai.GenerativeModel("gemini-pro")
+    try:
+        model = genai.GenerativeModel("gemini-1.5-pro")
 
-response = model.generate_content(prompt)
+        response = model.generate_content(prompt)
+        text = response.text.strip()
 
-text = response.text.strip()
         print("GEMINI RAW:", text)
-      
-        # extract JSON safely
+
         match = re.search(r"\{.*\}", text, re.DOTALL)
 
         if match:
             return json.loads(match.group())
 
-        # fallback if Gemini returns normal text
         return {
             "reply": text,
             "intent": "unknown",
@@ -95,7 +94,8 @@ text = response.text.strip()
             "intent": "unknown",
             "lead_capture": False,
             "next_question": None
-        }        
+        }
+
 # ----------------------------
 # Chat endpoint
 # ----------------------------
@@ -108,29 +108,29 @@ def chat():
     session = get_session(session_id)
     response = ai_agent_reply(msg, session)
 
-    # Update session context
     session["last_question"] = response.get("next_question")
+
     if response.get("lead_capture"):
         session["lead_stage"] = "capture"
 
-    # Lead capture flow
     if session["lead_stage"] == "capture":
         if "name" not in session["lead"]:
             session["lead"]["name"] = msg
             response["reply"] += " Thanks! Can you share your email or WhatsApp number?"
             session["last_question"] = "lead_contact"
+
         elif "contact" not in session["lead"] and session.get("last_question") == "lead_contact":
             session["lead"]["contact"] = msg
             session["lead_stage"] = "complete"
             session["last_question"] = None
             response["reply"] = "Perfect 👍 Our team will contact you shortly."
 
-    # Add to session history
     session["history"].append({
         "user": msg,
         "bot": response["reply"],
         "time": str(datetime.now())
     })
+
     response["session_id"] = session_id
 
     return jsonify(response)

@@ -7,23 +7,19 @@ from datetime import datetime
 import google.generativeai as genai
 
 # ----------------------------
-# Gemini config (NEW SDK ONLY)
+# Gemini config (STABLE SDK)
 # ----------------------------
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 def call_gemini(prompt):
-    response = text = call_gemini(prompt)
-    return response.text
-    
-
-def call_gemini(prompt):
-    response = client.models.generate_content(
-        model="gemini-1.5-flash",
-        contents=prompt
-    )
-    return response.text.strip()
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        print("GEMINI ERROR:", e)
+        return None
 
 # ----------------------------
 # Flask app
@@ -55,10 +51,11 @@ def extract_json(text):
     try:
         start = text.find("{")
         end = text.rfind("}") + 1
+
         if start != -1 and end != -1:
             return json.loads(text[start:end])
-    except:
-        pass
+    except Exception as e:
+        print("JSON PARSE ERROR:", e)
 
     return {
         "reply": text,
@@ -76,7 +73,7 @@ def ai_agent_reply(user_message, session):
         "lead_stage": session.get("lead_stage"),
         "service": session.get("service"),
         "last_question": session.get("last_question"),
-        "history": session.get("history")[-5:]  # keep last 5 only
+        "history": session.get("history")[-5:]
     }
 
     print("SESSION CONTEXT:", session_context)
@@ -99,27 +96,19 @@ Return ONLY valid JSON:
 }}
 """
 
-    try:
-        response = client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=prompt
-        )
+    text = call_gemini(prompt)
 
-        text = response.text.strip()
-
-        print("GEMINI RAW:", text)
-
-        return extract_json(text)
-
-    except Exception as e:
-        print("GEMINI ERROR:", repr(e))
-
+    if not text:
         return {
-            "reply": "Server error. Please try again.",
+            "reply": "AI service temporarily unavailable.",
             "intent": "unknown",
             "lead_capture": False,
             "next_question": None
         }
+
+    print("GEMINI RAW:", text)
+
+    return extract_json(text)
 
 # ----------------------------
 # Chat endpoint
@@ -143,7 +132,7 @@ def chat():
     if response.get("lead_capture"):
         session["lead_stage"] = "capture"
 
-    # simple lead flow
+    # lead flow
     if session["lead_stage"] == "capture":
 
         if "name" not in session["lead"]:

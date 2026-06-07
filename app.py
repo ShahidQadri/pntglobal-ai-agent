@@ -67,7 +67,7 @@ try:
 except:
     model = genai.GenerativeModel("gemini-pro")
     
-    response = model.generate_content(prompt)
+response = model.generate_content(prompt)
 
         text = response.text.strip()
 

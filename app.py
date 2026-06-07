@@ -4,31 +4,45 @@ import os
 import uuid
 import json
 from datetime import datetime
-from google import genai
+
 
 # ----------------------------
-# Gemini config (NEW SDK)
+# OpenRoute config (NEW SDK)
 # ----------------------------
 
-API_KEY = os.getenv("GOOGLE_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-client = genai.Client(api_key=API_KEY)
 
-def call_gemini(prompt):
+import requests
+import os
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+def call_ai(prompt):
     try:
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://pntglobal.com",  # optional but recommended
+                "X-Title": "AskPNT"
+            },
+            json={
+                "model": "openai/gpt-4o-mini",  # safe + stable free/cheap model
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ]
+            },
+            timeout=30
         )
 
-        text = response.text
-        print("✅ GEMINI OK:", text)
-        return text.strip() if text else ""
+        data = response.json()
+        return data["choices"][0]["message"]["content"]
 
     except Exception as e:
-        print("🔥 GEMINI FAILED:", e)
-        return ""
-
+        print("OPENROUTER ERROR:", e)
+        return "AI service temporarily unavailable."
 # ----------------------------
 # Flask app
 # ----------------------------
@@ -104,7 +118,7 @@ Return ONLY valid JSON:
 }}
 """
 
-    text = call_gemini(prompt)
+    text = call_ai(prompt)
 
     if not text:
         return {

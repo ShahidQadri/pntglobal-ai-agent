@@ -64,13 +64,13 @@ Return ONLY JSON (no markdown, no text):
 
 try:
     model = genai.GenerativeModel("gemini-1.5-pro")
-except:
+except Exception as e:
+    print("Model fallback triggered:", e)
     model = genai.GenerativeModel("gemini-pro")
-    
+
 response = model.generate_content(prompt)
 
-        text = response.text.strip()
-
+text = response.text.strip()
         print("GEMINI RAW:", text)
       
         # extract JSON safely

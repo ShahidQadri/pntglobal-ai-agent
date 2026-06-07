@@ -4,12 +4,19 @@ import os
 import uuid
 import json
 from datetime import datetime
-from google import genai
+import google.generativeai as genai
 
 # ----------------------------
 # Gemini config (NEW SDK ONLY)
 # ----------------------------
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+model = genai.GenerativeModel("gemini-1.5-flash")
+
+def call_gemini(prompt):
+    response = text = call_gemini(prompt)
+    return response.text
+    
 
 def call_gemini(prompt):
     response = client.models.generate_content(

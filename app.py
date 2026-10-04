@@ -37,15 +37,13 @@ def call_ai(prompt):
             timeout=30
         )
 
-data = response.json()
 
-print("OPENROUTER STATUS:", response.status_code)
-print("OPENROUTER RESPONSE:", data)
+        data = response.json()
+        return data["choices"][0]["message"]["content"]
 
-return data["choices"][0]["message"]["content"]
     except Exception as e:
-    print("OPENROUTER ERROR:", e)
-    return "AI service temporarily unavailable."
+        print("OPENROUTER ERROR:", e)
+        return "AI service temporarily unavailable."
 # ----------------------------
 # Flask app
 # ----------------------------

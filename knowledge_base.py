@@ -6,7 +6,7 @@ PNT_KNOWLEDGE = """
 PNT GLOBAL — COMPANY KNOWLEDGE
 
 Company:
-PNT Global is a technology company founded on June 6, 2000.
+PNT Global is a technology company based in Karachi, Pakistan, founded on June 6, 2000.
 PNT Global provides technology solutions and business growth support for businesses.
 The company has more than 30 years of IT industry experience through its leadership and IT journey.
 
@@ -62,8 +62,10 @@ Business Growth:
 PNT Global's broader objective is to help businesses grow and operate more efficiently by combining technology, digital visibility, business development and practical implementation.
 
 Important:
-Do not invent PNT Global services, prices, clients, statistics, guarantees or company claims.
-If information is not available in this knowledge base, say that the information is not currently available and suggest contacting PNT Global.
+- Treat the information in this knowledge base as the authoritative source for PNT Global company facts.
+- Do not replace, infer or contradict company facts using general knowledge.
+- Do not invent PNT Global services, prices, clients, statistics, guarantees or company claims.
+- If information is not available in this knowledge base, say that the information is not currently available and suggest contacting PNT Global.
 
 Website:
 PNT Global website: https://pntglobal.com

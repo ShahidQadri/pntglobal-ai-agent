@@ -202,6 +202,58 @@ If no service is currently identified, use null.
 
     return extract_json(text)
 # ----------------------------
+# Chat endpoint
+# ----------------------------
+@app.route("/agent-chat", methods=["POST"])
+def chat():
+
+    data = request.get_json() or {}
+    msg = data.get("message", "").strip()
+    session_id = data.get("session_id") or str(uuid.uuid4())
+
+    if not msg:
+        return jsonify({"reply": "Please send a message."})
+
+    session = get_session(session_id)
+
+    # Get AI response
+    response = ai_agent_reply(msg, session)
+
+    # ----------------------------
+    # Update conversation memory
+    # ----------------------------
+
+    session["last_question"] = response.get("next_question")
+
+    # Remember current service
+    if response.get("service"):
+        session["service"] = response.get("service")
+
+    # ----------------------------
+    # Lead capture
+    # ----------------------------
+
+    if response.get("lead_capture"):
+        session["lead_stage"] = "capture"
+
+    # ----------------------------
+    # Save conversation history
+    # ----------------------------
+
+    session["history"].append({
+        "user": msg,
+        "bot": response.get("reply", ""),
+        "time": str(datetime.now())
+    })
+
+    # Keep only recent conversation history
+    session["history"] = session["history"][-10:]
+
+    # Return session ID to browser
+    response["session_id"] = session_id
+
+    return jsonify(response)
+# ----------------------------
 # Health check
 # ----------------------------
 @app.route("/", methods=["GET"])

@@ -61,6 +61,11 @@ PNT Global also provides technology and business-oriented training in areas incl
 Business Growth:
 PNT Global's broader objective is to help businesses grow and operate more efficiently by combining technology, digital visibility, business development and practical implementation.
 
+Leadership:
+Engr. Shahid H. Qadri (SHQ) is the Founder and CEO of PNT Global.
+He has more than 30 years of experience in the IT industry and has
+been involved in technology, business development and IT entrepreneurship.
+
 Important:
 - Treat the information in this knowledge base as the authoritative source for PNT Global company facts.
 - Do not replace, infer or contradict company facts using general knowledge.

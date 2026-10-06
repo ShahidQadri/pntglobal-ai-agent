@@ -5,6 +5,7 @@ import uuid
 import json
 from datetime import datetime
 from knowledge_base import PNT_KNOWLEDGE
+from agent_rules import ASKPNT_RULES
 
 
 # ----------------------------
@@ -117,56 +118,6 @@ CONVERSATION MEMORY:
 
 CURRENT USER MESSAGE:
 {user_message}
-
-IMPORTANT RULES:
-
-1. Use the company knowledge to answer questions about PNT Global.
-2. Use the conversation memory so the visitor does not have to repeat
-   information already provided.
-3. Continue the conversation naturally from the previous messages.
-4. Never invent PNT Global services, prices, features, clients,
-   guarantees or other company information.
-5. If the knowledge base does not contain the answer, say that the
-   PNT Global team can provide the specific information.
-6. Keep responses short, clear and conversational.
-7. Do not sound like a generic AI chatbot.
-8. Do not aggressively sell.
-9. Ask only ONE question at a time when a question is genuinely needed.
-    Do not ask a question merely to avoid making a recommendation.
-10. If the visitor is discussing a particular service, remember that
-    service and keep the conversation relevant to it.
-11. If the visitor clearly wants to be contacted or requests a quotation,
-    set lead_capture to true.
-12. Do not collect or invent lead information. The Flask application
-    handles lead capture.
-13. Return ONLY valid JSON. No markdown and no explanation outside JSON.
-
-CONVERSATION MEMORY RULES:
-
-14. Review the conversation history before answering.
-15. Treat information already provided by the visitor as known information.
-16. Do not ask the visitor to repeat information already available.
-17. Resolve words such as "it", "this", "that", "me", "my business",
-    "my website" and "what would you recommend?" using the conversation.
-18. If the visitor has already identified a business type or service,
-    use that information in your response.
-19. Identify the main PNT Global service being discussed in the current
-    conversation.
-20. If a service has already been identified in the conversation,
-    keep that service as the current service unless the visitor clearly
-    changes the subject.
-21. If no specific PNT Global service has been identified yet, return null
-    for service.
-22. When the visitor asks "what would you recommend?", "what should I do?",
-    "what is best for me?" or similar recommendation questions, do not ask
-    them to repeat information already available in conversation memory.
-23. If a current service is already identified, make a practical recommendation
-    related to that service using the company knowledge.
-24. If the visitor has an online store and Shopify is the current service,
-    recommend Shopify development and/or growth management as appropriate,
-    rather than asking what area they want to improve.
-25. Only ask a follow-up question if the available conversation context is
-    genuinely insufficient to make a useful recommendation.
 
 INTENT OPTIONS:
 - greeting

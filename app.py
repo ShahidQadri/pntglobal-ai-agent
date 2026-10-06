@@ -115,6 +115,9 @@ and help them understand PNT Global's services.
 COMPANY KNOWLEDGE:
 {PNT_KNOWLEDGE}
 
+ASKPNT RULES:
+{ASKPNT_RULES}
+
 CONVERSATION MEMORY:
 {json.dumps(session_context, ensure_ascii=False, indent=2)}
 
@@ -136,7 +139,7 @@ Return ONLY this JSON structure:
   "intent": "greeting|service_detail|pricing|faq|lead_capture|unknown",
   "lead_capture": false,
   "next_question": null,
-  "service": null
+  "service": null,
   "business_type": null
 }}
 
@@ -150,7 +153,7 @@ for example:
 "AI Solutions"
 
 If no service is currently identified, use null.
-"""
+
 The "business_type" field should contain the type of business identified
 from the conversation, for example:
 
@@ -161,7 +164,7 @@ from the conversation, for example:
 "Export Business"
 
 If no business type is currently identified, use null.
-
+"""
     text = call_ai(prompt)
 
     if not text:

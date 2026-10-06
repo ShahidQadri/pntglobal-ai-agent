@@ -62,6 +62,7 @@ def get_session(session_id):
         sessions[session_id] = {
             "lead_stage": None,
             "service": None,
+            "business_type": None,
             "history": [],
             "last_question": None,
             "lead": {},
@@ -97,6 +98,7 @@ def ai_agent_reply(user_message, session):
     session_context = {
         "lead_stage": session.get("lead_stage"),
         "service": session.get("service"),
+        "business_type": session.get("business_type"),
         "last_question": session.get("last_question"),
         "lead": session.get("lead", {}),
         "history": session.get("history")[-5:]
@@ -135,6 +137,7 @@ Return ONLY this JSON structure:
   "lead_capture": false,
   "next_question": null,
   "service": null
+  "business_type": null
 }}
 
 The "service" field should contain the current service being discussed,
@@ -148,6 +151,16 @@ for example:
 
 If no service is currently identified, use null.
 """
+The "business_type" field should contain the type of business identified
+from the conversation, for example:
+
+"Online Store"
+"Textile Manufacturer"
+"Restaurant"
+"IT Company"
+"Export Business"
+
+If no business type is currently identified, use null.
 
     text = call_ai(prompt)
 
@@ -158,6 +171,7 @@ If no service is currently identified, use null.
             "lead_capture": False,
             "next_question": None,
             "service": None
+            
         }
 
     print("AI RAW:", text)
@@ -191,6 +205,10 @@ def chat():
     if response.get("service"):
         session["service"] = response.get("service")
 
+    # Remember business type
+    if response.get("business_type"):
+        session["business_type"] = response.get("business_type")
+    
     # ----------------------------
     # Lead capture
     # ----------------------------

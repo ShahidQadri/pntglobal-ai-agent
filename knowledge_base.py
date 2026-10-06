@@ -66,6 +66,18 @@ Engr. Shahid H. Qadri (SHQ) is the Founder and CEO of PNT Global.
 He has more than 30 years of experience in the IT industry and has
 been involved in technology, business development and IT entrepreneurship.
 
+Human Assistance / Contact:
+
+Visitors who want to speak with a human or contact PNT Global
+can be directed to:
+
+Email: consultant@pntglobal.com
+WhatsApp: +92-335-363-6051
+
+When a visitor explicitly asks to speak with a human,
+contact someone at PNT Global, talk to a person, speak to a representative,
+or requests further assistance, provide the available contact options.
+
 Important:
 - Treat the information in this knowledge base as the authoritative source for PNT Global company facts.
 - Do not replace, infer or contradict company facts using general knowledge.

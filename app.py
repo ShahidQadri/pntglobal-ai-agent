@@ -609,6 +609,24 @@ def home():
 
     return "AskPNT AI vNext Running 🚀"
 
+@app.route("/key-check", methods=["GET"])
+def key_check():
+    key = os.getenv("OPENROUTER_API_KEY", "").strip()
+
+    if not key:
+        return jsonify({"error": "API key missing"}), 500
+
+    r = requests.get(
+        "https://openrouter.ai/api/v1/key",
+        headers={"Authorization": f"Bearer {key}"},
+        timeout=15
+    )
+
+    return jsonify({
+        "status": r.status_code,
+        "details": r.json()
+    }), r.status_code
+
 
 # ============================================================
 # Run Application

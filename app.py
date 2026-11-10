@@ -14,18 +14,34 @@ from agent_rules import ASKPNT_RULES
 # OpenRouter Configuration
 # ============================================================
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
+import hashlib
 
 def call_ai(prompt):
     try:
+        api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+
+        if not api_key:
+            print("OPENROUTER ERROR: API KEY MISSING")
+            return None
+
+        fingerprint = hashlib.sha256(
+            api_key.encode()
+        ).hexdigest()[:12]
+
+        print("OPENROUTER KEY CHECK:", {
+            "present": True,
+            "length": len(api_key),
+            "fingerprint": fingerprint
+        })
+
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "https://pntglobal.com",
-                "X-Title": "AskPNT"
+                "X-Title": "ChatPNT"
             },
             json={
                 "model": "openai/gpt-4o-mini",
@@ -39,15 +55,18 @@ def call_ai(prompt):
             timeout=30
         )
 
-        response.raise_for_status()
+        if not response.ok:
+            print("OPENROUTER STATUS:", response.status_code)
+            print("OPENROUTER RESPONSE:", response.text[:1500])
+            return None
 
         data = response.json()
-
         return data["choices"][0]["message"]["content"]
 
     except Exception as e:
-        print("OPENROUTER ERROR:", e)
+        print("OPENROUTER ERROR:", repr(e))
         return None
+
 
 
 # ============================================================
